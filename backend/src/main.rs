@@ -1,26 +1,28 @@
-use actix_web::{get, web, App, HttpServer};
+use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+use tera::{Context, Tera};
 
-// This struct represents state
-struct AppState {
-    app_name: String,
+async fn index(tera: web::Data<Tera>) -> impl Responder {
+    let ctx = Context::new();
+    let rendered = tera.render("index.html", &ctx).unwrap();
+    HttpResponse::Ok().content_type("text/html").body(rendered)
 }
 
-#[get("/")]
-async fn index(data: web::Data<AppState>) -> String {
-    let app_name = &data.app_name; // <- get app_name
-    format!("Hello {app_name}!") // <- response with app_name
+async fn fetch_data() -> impl Responder {
+    // This is the response to the HTMX request
+    HttpResponse::Ok().body("<div id='content'>Here is your dynamic data!</div>")
 }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    HttpServer::new(|| {
+    let tera = Tera::new("templates/**/*").unwrap();
+
+    HttpServer::new(move || {
         App::new()
-            .app_data(web::Data::new(AppState {
-                app_name: String::from("Actix Web"),
-            }))
-            .service(index)
+            .app_data(web::Data::new(tera.clone()))
+            .route("/", web::get().to(index))
+            .route("/fetch-data", web::get().to(fetch_data)) // HTMX route
     })
-    .bind(("127.0.0.1", 8080))?
+    .bind("127.0.0.1:8080")?
     .run()
     .await
 }
