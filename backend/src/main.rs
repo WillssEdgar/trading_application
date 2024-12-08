@@ -1,3 +1,4 @@
+use actix_files::Files; // For serving static files
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use tera::{Context, Tera};
 
@@ -8,7 +9,7 @@ async fn index(tera: web::Data<Tera>) -> impl Responder {
 }
 
 async fn fetch_data() -> impl Responder {
-    // This is the response to the HTMX request
+    // Response to HTMX request
     HttpResponse::Ok().body("<div id='content'>Here is your dynamic data!</div>")
 }
 
@@ -19,6 +20,8 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(tera.clone()))
+            // Serve static files from ./static
+            .service(Files::new("/static", "./static").show_files_listing())
             .route("/", web::get().to(index))
             .route("/fetch-data", web::get().to(fetch_data)) // HTMX route
     })
